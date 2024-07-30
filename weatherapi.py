@@ -72,6 +72,7 @@ class Weather(Base):
 @flow
 def insert_data():
     data = get_data(url=url, api_key=api_key)
+    # print(data)
     
     engine = create_engine('sqlite:///weather.db')
     Base.metadata.create_all(engine)
@@ -126,5 +127,5 @@ def insert_data():
 #     tags=["weather", "API"],
 # )
 
-if __name__ == "__main__":
-    insert_data()
+# if __name__ == "__main__":
+#     insert_data()
