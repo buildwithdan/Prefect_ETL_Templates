@@ -108,7 +108,7 @@ def setup_db():
     Session = sessionmaker(bind=engine)
     session = Session()
 
-@flow
+@task
 def insert_data():
     data = get_data(url=url, api_key=api_key)
 
