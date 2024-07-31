@@ -15,7 +15,7 @@ push:
 # pull section allows you to provide instructions for cloning this project in remote locations
 pull:
 - prefect.deployments.steps.git_clone:
-    repository: https://github.com/buildwithdan/BankAPI.git
+    repository: https://github.com/buildwithdan/Prefect_ETL_Templates.git
     branch: main
 
 # the deployments section allows you to provide configuration for deploying flows
