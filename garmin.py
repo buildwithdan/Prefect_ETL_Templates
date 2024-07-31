@@ -57,6 +57,7 @@ if not api:
 
 
 # Inserting into DB via SQLalchemy
+@task(log_prints=True)
 def insert_steps(data):  # Keep the function name as is
     session = Session()
     try:
@@ -80,7 +81,8 @@ def insert_steps(data):  # Keep the function name as is
         session.close()
         print("Session closed")
         
-# Inserting into DB via Pandas - working             
+# Inserting into DB via Pandas - working  
+@task(log_prints=True)           
 def insert_df_steps(data):
     try:
         # Convert the list of dictionaries into a DataFrame
@@ -100,6 +102,7 @@ def insert_df_steps(data):
     finally:
         print("Operation completed.")
 
+@task(log_prints=True)
 def insert_df_hrate_per_min(data):
     try:
         # Convert the list of dictionaries into a DataFrame
@@ -124,6 +127,7 @@ def insert_df_hrate_per_min(data):
     finally:
         print("Operation completed.")    
 
+@task(log_prints=True)
 def insert_df_hrate_per_day(data):
     try: 
         data.pop('heartRateValueDescriptors', None)
@@ -142,7 +146,8 @@ def insert_df_hrate_per_day(data):
         print(f"An error occurred: {e}")
     finally:
         print("Operation completed.") 
-                
+
+@task(log_prints=True)               
 def insert_df_stress_per_min(data):
     try:
         # Convert the list of dictionaries into a DataFrame
@@ -161,6 +166,7 @@ def insert_df_stress_per_min(data):
     finally:
         print("Operation completed.")    
 
+@task(log_prints=True)
 def insert_df_stress_per_day(data):
     try: 
         data.pop('stressChartValueOffset', None)
@@ -185,6 +191,7 @@ def insert_df_stress_per_day(data):
         print("Operation completed.") 
 
 
+@flow(name="Garmin Data Flow")
 def logic_flow():
   # Day Loops
   start_date = (datetime.today() - timedelta(days=30)).date()
