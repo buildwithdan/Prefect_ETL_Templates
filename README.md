@@ -1,2 +1,2 @@
-# Bank_API
-Tooling to pull Banking Transactions into Python and then push it to any DB you want.
+# Prefect ETL Pipelines
+This includes all my ETL pipelines for personal usage.
