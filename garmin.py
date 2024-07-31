@@ -185,7 +185,7 @@ def insert_df_stress_per_day(data):
         print("Operation completed.") 
 
 
-@flow(name="Garmin Data Flow")
+# @flow(name="Garmin Data Flow")
 def logic_flow():
   # Day Loops
   start_date = (datetime.today() - timedelta(days=30)).date()
