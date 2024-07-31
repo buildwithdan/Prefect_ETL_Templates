@@ -7,46 +7,47 @@ name: Project_ETL_Pipelines
 prefect-version: 2.19.9
 
 # build section allows you to manage and build docker images
-build:
+build: {}
 
 # push section allows you to manage if and how this project is uploaded to remote locations
-push:
+push: {}
 
 # pull section allows you to provide instructions for cloning this project in remote locations
 pull:
-- prefect.deployments.steps.git_clone:
-    repository: https://github.com/buildwithdan/Prefect_ETL_Templates.git
-    branch: main
+  - prefect.deployments.steps.git_clone:
+      repository: https://github.com/buildwithdan/Prefect_ETL_Templates.git
+      branch: main
 
 # the deployments section allows you to provide configuration for deploying flows
-- name: weather_etl
-  version:
-  tags: []
-  description:
-  entrypoint: weather_etl.py:logic_flow
-  parameters: {}
-  work_pool:
-    name: pve
-    work_queue_name:
-    job_variables: {}
-  schedules:
-  - interval: 900.0
-    anchor_date: '2024-07-31T10:56:15.156844+00:00'
-    timezone: UTC
-    active: true
 deployments:
-- name: garmin_etl2
-  version:
-  tags: []
-  description:
-  entrypoint: garmin.py:logic_flow
-  parameters: {}
-  work_pool:
-    name: pve
-    work_queue_name:
-    job_variables: {}
-  schedules:
-  - interval: 3600.0
-    anchor_date: '2024-07-31T14:25:09.273732+00:00'
-    timezone: UTC
-    active: true
+  - name: weather_etl
+    version: null
+    tags: []
+    description: null
+    entrypoint: weather_etl.py:logic_flow
+    parameters: {}
+    work_pool:
+      name: pve
+      work_queue_name: null
+      job_variables: {}
+    schedules:
+      - interval: 900.0
+        anchor_date: '2024-07-31T10:56:15.156844+00:00'
+        timezone: UTC
+        active: true
+
+  - name: garmin_etl2
+    version: null
+    tags: []
+    description: null
+    entrypoint: garmin.py:logic_flow
+    parameters: {}
+    work_pool:
+      name: pve
+      work_queue_name: null
+      job_variables: {}
+    schedules:
+      - interval: 3600.0
+        anchor_date: '2024-07-31T14:25:09.273732+00:00'
+        timezone: UTC
+        active: true
