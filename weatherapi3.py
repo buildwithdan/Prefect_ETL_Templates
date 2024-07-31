@@ -1,43 +1,32 @@
+import logging
+import requests
 from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean
 from sqlalchemy.orm import sessionmaker, declarative_base
-import requests
-import json
+from sqlalchemy.engine import Engine
 from prefect import task, flow
-from prefect.deployments import Deployment
-from prefect_sqlalchemy import SqlAlchemyConnector
+from prefect.blocks.system import Secret
 
-# Define the API endpoint
-url = 'http://api.weatherapi.com/v1/current.json'
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Define your API key
-api_key = '5e7394f9a18b4e11af0200141241807'
+# Define the API endpoint and retrieve API key from secrets
+api_url = 'http://api.weatherapi.com/v1/current.json'
+api_key_raw = Secret.load("weather-api-key").get()
 
-@task
-def get_data(url, api_key):
-    params = {
-        'key': api_key,
-        'q': 'Maidstone'
-    }
-
-    # Make the GET request
-    response = requests.get(url, params=params)
-    data = response.json()
-    data = data["current"]
-
-    if response.status_code == 200:
-        print("Data collected successfully")
-    else:
-        print(f'Error: {response.status_code}')
-        print(response.text)
-
-    return data
+# Define the connection parameters for the database
+db_host = Secret.load("db-host").get()
+db_user = Secret.load("db-user").get()
+db_password = Secret.load("db-password").get()
+db_name = "PrivateDB"
 
 # Create SQLAlchemy base
 Base = declarative_base()
 
 # Define the Weather model
 class Weather(Base):
-    __tablename__ = 'weather2'
+    __tablename__ = 'weather_data'
+    __table_args__ = {'schema': 'weather'}
     last_updated_epoch = Column(Integer, primary_key=True)
     last_updated = Column(String)
     temp_c = Column(Float)
@@ -70,17 +59,56 @@ class Weather(Base):
     gust_mph = Column(Float)
     gust_kph = Column(Float)
 
+
+def get_engine_db(bulk: bool = True) -> Engine:
+    # Create the connection string for SQLAlchemy
+    con_str = (
+        f"mssql+pyodbc://{db_user}:{db_password}@{db_host}/{db_name}"
+        "?driver=ODBC+Driver+17+for+SQL+Server"
+        "&Encrypt=yes"
+        "&TrustServerCertificate=no"
+        "&Connection Timeout=30"
+    )
+    return create_engine(con_str, fast_executemany=bulk, echo=True)
+
+@task
+def setup_db():
+    engine = get_engine_db()
+    Base.metadata.create_all(engine)
+    logger.info("Database setup completed successfully.")
+
+
+@task
+def get_data(url, api_key):
+    try:
+        response = requests.get(url, 
+            params={'key': api_key, 'q': 'Maidstone'}
+            )
+
+        response.raise_for_status()  # Raise an HTTPError for bad responses
+
+        data = response.json().get("current")
+
+        logger.info("Data collected successfully")
+
+        return data
+
+    except requests.RequestException as e:
+        logger.error(f"Error fetching data from API: {e}", exc_info=True)
+        return data
+
 @flow
 def insert_data():
-    data = get_data(url=url, api_key=api_key)
-    # print(data)
-    
-    engine = create_engine('sqlite:///weather.db')
+    data = get_data(url=api_url, api_key=api_key_raw)
+    if not data:
+        logger.warning("No data to insert")
+        return
 
-    Base.metadata.create_all(engine)
+    engine = get_engine_db()
     Session = sessionmaker(bind=engine)
     session = Session()
 
+    # Create a Weather instance with the data
     weather = Weather(
         last_updated_epoch=data['last_updated_epoch'],
         last_updated=data['last_updated'],
@@ -115,19 +143,18 @@ def insert_data():
         gust_kph=data['gust_kph']
     )
 
-    session.add(weather)
-    session.commit()
-    print("Data submitted to database correctly")
-
-    session.close()
-
-# # Create deployment
-# Deployment(
-#     flow=insert_data,
-#     name="weather-data-collection",
-#     schedule=IntervalSchedule(interval=timedelta(minutes=30)),
-#     tags=["weather", "API"],
-# )
+    # Add the Weather instance to the session and commit
+    try:
+        session.add(weather)
+        session.commit()
+        logger.info("Data submitted to database correctly")
+    except Exception as e:
+        logger.error("Failed to insert data into the database", exc_info=True)
+        session.rollback()
+    finally:
+        session.close()
 
 if __name__ == "__main__":
+    # Uncomment the line below if you want to setup the database schema
+    setup_db()
     insert_data()

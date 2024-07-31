@@ -1,43 +1,62 @@
 from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean
 from sqlalchemy.orm import sessionmaker, declarative_base
 import requests
-import json
 from prefect import task, flow
-from prefect.deployments import Deployment
-from prefect_sqlalchemy import SqlAlchemyConnector
+from prefect.blocks.system import Secret
+import pyodbc
 
 # Define the API endpoint
-url = 'http://api.weatherapi.com/v1/current.json'
+api_url = 'http://api.weatherapi.com/v1/current.json'
 
 # Define your API key
-api_key = '5e7394f9a18b4e11af0200141241807'
+secret_block = Secret.load("weather-api-key")
+api_key_raw = secret_block.get()
 
-@task
-def get_data(url, api_key):
-    params = {
-        'key': api_key,
-        'q': 'Maidstone'
-    }
+# db details
+db_host = Secret.load("db-host")
+db_password = Secret.load("db-password")
+db_user = Secret.load("db-user")
 
-    # Make the GET request
-    response = requests.get(url, params=params)
-    data = response.json()
-    data = data["current"]
+# connection_string = (
+#     "mssql+pyodbc:///?odbc_connect="
+#     "Driver={ODBC Driver 17 for SQL Server};"
+#     f"Server={db_host};"
+#     "Database=PrivateDB;"
+#     f"Uid={db_user};"
+#     f"Pwd={db_password};"
+#     "Encrypt=no;"
+#     "TrustServerCertificate=no;"
+#     "Connection Timeout=30;"
+# )
 
-    if response.status_code == 200:
-        print("Data collected successfully")
-    else:
-        print(f'Error: {response.status_code}')
-        print(response.text)
+# Define the connection parameters
+server = "dnell.database.windows.net"
+database = "PrivateDB"
+username = "r00t"
+password = "8pdB$d@T^qDHk5BEWVLwSQ$zNBy5Xq&S*eg6"
 
-    return data
+# Create the connection string
+connection_string = (
+    f"mssql+pyodbc://{username}:{password}@{server}/{database}"
+    "?driver=ODBC+Driver+17+for+SQL+Server"
+    "&Encrypt=yes"
+    "&TrustServerCertificate=no"
+    "&Connection Timeout=30"
+    )
+
+
+# Load the connection string from the DatabaseCredentials block
+# database_block = DatabaseCredentials.load("db-private")
+# db_block2 = SqlAlchemyConnector.load("dnell-privatedb")
+# engine = database_block.get_engine()
 
 # Create SQLAlchemy base
 Base = declarative_base()
 
 # Define the Weather model
 class Weather(Base):
-    __tablename__ = 'weather2'
+    __tablename__ = 'weather_data'
+    __table_args__ = {'schema': 'weather'}
     last_updated_epoch = Column(Integer, primary_key=True)
     last_updated = Column(String)
     temp_c = Column(Float)
@@ -70,17 +89,35 @@ class Weather(Base):
     gust_mph = Column(Float)
     gust_kph = Column(Float)
 
+@task
+def get_data(url, api_key):
+    params = {'key': api_key, 'q': 'Maidstone'}
+    response = requests.get(url, params=params)
+    data = response.json().get("current", {})
+
+    if response.status_code == 200:
+        print("Data collected successfully")
+    else:
+        print(f'Error: {response.status_code}')
+        print(response.text)
+
+    return data
+
 @flow
 def insert_data():
-    data = get_data(url=url, api_key=api_key)
-    # print(data)
-    
-    engine = create_engine('sqlite:///weather.db')
+    data = get_data(url=api_url, api_key=api_key_raw)
 
+    # Get the SQLAlchemy engine using the connection URL
+    engine = create_engine(connection_string)
+
+    # Ensure the table structure is created within the specified schema
     Base.metadata.create_all(engine)
+    
+    # Create a new session
     Session = sessionmaker(bind=engine)
     session = Session()
 
+    # Create a Weather instance with the data
     weather = Weather(
         last_updated_epoch=data['last_updated_epoch'],
         last_updated=data['last_updated'],
@@ -115,19 +152,20 @@ def insert_data():
         gust_kph=data['gust_kph']
     )
 
+    # Add the Weather instance to the session and commit
     session.add(weather)
     session.commit()
     print("Data submitted to database correctly")
 
+    # Close the session
     session.close()
-
-# # Create deployment
-# Deployment(
-#     flow=insert_data,
-#     name="weather-data-collection",
-#     schedule=IntervalSchedule(interval=timedelta(minutes=30)),
-#     tags=["weather", "API"],
-# )
 
 if __name__ == "__main__":
     insert_data()
+    # print(database_block)
+    # print(db_block2)
+    # print(engine)
+    # print(db_host)
+    # print(db_password)
+    # print(connection_string)
+    

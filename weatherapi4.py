@@ -1,10 +1,19 @@
-from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean
+from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean, engine, Engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import requests
 import json
 from prefect import task, flow
 from prefect.deployments import Deployment
-from prefect_sqlalchemy import SqlAlchemyConnector
+from prefect.blocks.system import Secret
+
+
+
+db_host = Secret.load("db-host").get()
+db_user = Secret.load("db-user").get()  
+db_password = Secret.load("db-password").get()
+db_name = "PrivateDB"   
+db_port = "1433"
+
 
 # Define the API endpoint
 url = 'http://api.weatherapi.com/v1/current.json'
@@ -37,7 +46,8 @@ Base = declarative_base()
 
 # Define the Weather model
 class Weather(Base):
-    __tablename__ = 'weather2'
+    __tablename__ = 'weather_data'
+    __table_args__ = {'schema': 'weather'}
     last_updated_epoch = Column(Integer, primary_key=True)
     last_updated = Column(String)
     temp_c = Column(Float)
@@ -70,12 +80,37 @@ class Weather(Base):
     gust_mph = Column(Float)
     gust_kph = Column(Float)
 
+
+
+def get_engine_db(bulk: bool=True) -> Engine:
+    con_str = engine.URL.create(
+        "mssql+pyodbc",
+        username=db_user,
+        password=db_password,
+        host=db_host,
+        database=db_name,
+        port=db_port,
+        query={
+            "driver": 'ODBC Driver 17 for SQL Server',
+            "LongAsMax": "Yes",
+        }
+    )
+    return create_engine(con_str, fast_executemany=bulk, echo=True)
+
+engine = get_engine_db()
+
+Session = sessionmaker(bind=engine)
+
+
+
+def setup_db():
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
 @flow
 def insert_data():
     data = get_data(url=url, api_key=api_key)
-    # print(data)
-    
-    engine = create_engine('sqlite:///weather.db')
 
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -121,13 +156,11 @@ def insert_data():
 
     session.close()
 
-# # Create deployment
-# Deployment(
-#     flow=insert_data,
-#     name="weather-data-collection",
-#     schedule=IntervalSchedule(interval=timedelta(minutes=30)),
-#     tags=["weather", "API"],
-# )
 
 if __name__ == "__main__":
+    setup_db()
     insert_data()
+    # print(type(db_name))
+    # print(type(db_password))
+    # print(type(db_host))
+    # print(type(db_port))
