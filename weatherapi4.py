@@ -81,7 +81,7 @@ class Weather(Base):
     gust_kph = Column(Float)
 
 
-
+@task
 def get_engine_db(bulk: bool=True) -> Engine:
     con_str = engine.URL.create(
         "mssql+pyodbc",
@@ -102,7 +102,7 @@ engine = get_engine_db()
 Session = sessionmaker(bind=engine)
 
 
-
+@task
 def setup_db():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -156,10 +156,13 @@ def insert_data():
 
     session.close()
 
-
-if __name__ == "__main__":
+@flow
+def logic_flow():
     setup_db()
     insert_data()
+
+if __name__ == "__main__":
+    logic_flow()
     # print(type(db_name))
     # print(type(db_password))
     # print(type(db_host))
