@@ -17,19 +17,12 @@ from garmin_models import *
 from prefect import task, flow
 from prefect.blocks.system import Secret
 
-
-# import logging
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-
-
-
 garmin_email = Secret.load("garmin-email").get()
 garmin_password = Secret.load("garmin-pwd").get()
 api = None
 tokenstore = ".garminconnect"
 
-@task(log_prints=True)
+# @task(log_prints=True)
 def init_api(email, password):
   try:
     print(
