@@ -37,7 +37,7 @@ class Hrate_day_tbl(Base):
     __tablename__ = 'etl_hrate_day'
     __table_args__ = {'schema': f"{db_schema}"}
     userProfilePK = Column(Integer)
-    calendarDate = Column(DateTime, primary_key=True)
+    calendarDate = Column(DateTime, primary_key=True,nullable=False)
     startTimestampGMT = Column(DateTime)
     endTimestampGMT = Column(DateTime)
     startTimestampLocal = Column(DateTime)
@@ -51,15 +51,15 @@ class Hrate_day_tbl(Base):
 class Hrate_min_tbl(Base):
     __tablename__ = 'etl_hrate_min'
     __table_args__ = {'schema': f"{db_schema}"}
-    timestamp = Column(DateTime, primary_key=True)
+    timestamp = Column(DateTime, nullable=False, primary_key=True)
     heartrate = Column(Integer)
     
 
 class Stress_day_tbl(Base):
     __tablename__ = 'etl_stress_day'
     __table_args__ = {'schema': f"{db_schema}"}
-    userProfilePK = Column(Integer)
-    calendarDate = Column(DateTime, primary_key=True)
+    userProfilePK = Column(Integer, nullable=False)
+    calendarDate = Column(DateTime, primary_key=True, nullable=False)
     startTimestampGMT = Column(DateTime)
     endTimestampGMT = Column(DateTime)
     startTimestampLocal = Column(DateTime)
