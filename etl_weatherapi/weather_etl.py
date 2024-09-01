@@ -17,7 +17,7 @@ db_port = "1433"
 
 # Define the API endpoint
 url = 'http://api.weatherapi.com/v1/current.json'
-api_key = '5e7394f9a18b4e11af0200141241807'
+api_key = Secret.load("weather-api-key").get()
 
 @task(log_prints=True)
 def get_data(url, api_key):
