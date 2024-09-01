@@ -3,3 +3,5 @@ venv
 venv.*
 etl_xero
 .junk
+/etl_garmin/.garminconnect
+etl_garmin/.garminconnect
